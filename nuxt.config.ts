@@ -14,8 +14,6 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  compatibilityDate: '2024-12-17',
-
   // i18n
   i18n: {
     strategy: 'prefix_and_default',

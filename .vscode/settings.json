@@ -1,0 +1,6 @@
+{
+  "i18n-ally.localesPaths": [
+    "i18n",
+    "node_modules/.c12/*/i18n"
+  ]
+}
