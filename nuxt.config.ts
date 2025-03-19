@@ -7,6 +7,11 @@ export default defineNuxtConfig({
   // Imports https://nuxt.com/docs/api/configuration/nuxt-config#imports
   imports: {},
 
+  modules: [
+    '@nuxtjs/i18n',
+    '@nuxt/eslint',
+  ],
+
   srcDir: 'client/',
 
   // Future
@@ -41,6 +46,13 @@ export default defineNuxtConfig({
         icon: 'i-emojione:flag-for-czechia',
       },
     ],
+  },
+
+  eslint: {
+    config: {
+      standalone: false,
+      stylistic: true,
+    },
   },
 
   unocss: {
