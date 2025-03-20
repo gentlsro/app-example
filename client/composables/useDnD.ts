@@ -11,7 +11,7 @@ export function useDnD() {
   const { items, listEl, draggedItem, dragMeta } = storeToRefs(useDnDStore())
 
   // Utils
-  const direction: 'vertical' | 'horizontal' = 'vertical'
+  const direction: 'vertical' | 'horizontal' = 'horizontal'
   let gap = 0
   let lastY = 0
   const { x, y } = useSharedMouse()

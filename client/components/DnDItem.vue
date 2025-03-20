@@ -57,7 +57,7 @@ onMounted(() => {
   >
     <slot>
       <span>{{ item.id }} w: {{ width }}</span>
-      <span>{{ s }}</span>
+      <!-- <span>{{ s }}</span> -->
       <span text="center" >{{ item.text }}</span>
     </slot>
   </div>
@@ -65,8 +65,8 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .dnd-item {
-  @apply relative flex flex-col flex-center p-2 bg-black rounded-custom min-h-16;
-  
+  @apply relative flex flex-col flex-center p-2 bg-black rounded-custom min-h-16 w-48;
+
   transform: translate3d(var(--translate3D, 0, 0, 0));
   will-change: transform;
 
