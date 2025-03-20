@@ -6,52 +6,62 @@ import type { IDraggedItem } from '~/types/dragged-item.type'
 
 const DND_ITEM_CLASSES = ['dnd-item']
 
-export function useDnD() {
+export function useDnD(options?: { direction?: 'horizontal' | 'vertical' }) {
+  const {
+    direction = 'vertical'
+  } = options ?? {}
+
   // Store
   const { items, listEl, draggedItem, dragMeta } = storeToRefs(useDnDStore())
 
   // Utils
-  const direction: 'vertical' | 'horizontal' = 'horizontal'
   let gap = 0
   let lastY = 0
+  let lastX = 0
   const { x, y } = useSharedMouse()
 
   function handleDragStart(payload: { item: IDraggedItem, el: HTMLElement }) {
     // Get the list padding top to calculate the correct position of drop indicator
     const listElDom = unrefElement(listEl as any) as HTMLElement
-    
+
     // Get gap for the list
     const listGap = getComputedStyle(listElDom)
     gap = Number.parseFloat(direction === 'vertical' ? listGap.rowGap : listGap.columnGap)
-
-    // if (listElDom) {
-    //   const listPaddingTop = getComputedStyle(listElDom).paddingTop
-
-    //   dragMeta.value.dropIndicatorCSS = { top: listPaddingTop }
-    // }
 
     draggedItem.value = payload.item
     dragMeta.value = {
       ...dragMeta.value,
       sourceRect: payload.el.getBoundingClientRect(),
       sourceEl: payload.el as HTMLElement,
+      sourceContainerEl: unrefElement(listEl.value),
     }
 
-    // if (listElDom) {
-    //   const items = listElDom.querySelectorAll('.virtual-scroll__row') as NodeListOf<HTMLElement>
+    if (listElDom) {
+      const parentNode = listElDom.parentNode as HTMLElement
 
-    //   items.forEach(item => {
-    //     item.style.transition = 'transform 125ms linear'
-    //     item.style.setProperty('--translate3D', '0, 0, 0')
-    //   })
-    // }
+      // Create temp clone to keep DOM structure
+      const listClone = listElDom.cloneNode(true) as HTMLElement
+      parentNode.insertBefore(listClone, listElDom)
+      const { left, right } = listElDom.getBoundingClientRect()
+      listElDom.style.position = 'absolute'
+
+
+
+      const items = listElDom.querySelectorAll('.dnd-item') as NodeListOf<HTMLElement>
+
+      items.forEach(item => {
+        item.style.transition = 'transform 125ms cubic-bezier(0.25, 0.1, 0.25, 1.0)'
+        item.style.setProperty('--translate3D', '0, 0, 0')
+      })
+    }
   }
 
   function handleDragMove(ev: Pick<PointerSensorMoveEvent, 'x' | 'y' | 'target'>, delta = 0) {
     const { x, y, target } = ev
     lastY = y
+    lastX = x
     const elements = document.elementsFromPoint(x, y)
-    const listElDom = unrefElement(listEl as any) as HTMLElement
+    const listElDom = dragMeta.value.sourceContainerEl as HTMLElement
 
     const draggedOverItem = elements.find(el => {
       return DND_ITEM_CLASSES.some(cls => el.classList.contains(cls))
@@ -104,19 +114,22 @@ export function useDnD() {
       ? (target as HTMLElement)
       : (target as HTMLElement).closest('.dnd-item') as HTMLElement
     const targetIdxString = t?.getAttribute('data-idx')
-    
+
     if (!t || isNil(targetIdxString)) {
       return
     }
 
     const targetIdx = Number(targetIdxString)
-    
 
     if (isSelf || isSame || !draggedOverItem || !draggedItem.value) {
       return
     }
 
+    dragMeta.value.targetContainerEl = t.closest('.dnd') as HTMLElement
+
     requestAnimationFrame(() => {
+      const isSameContainer = dragMeta.value.sourceContainerEl === dragMeta.value.targetContainerEl
+
       // Otherwise, we animate the changes through the translate3d property
       if (!isNil(draggedItem.value?.index)) {
         let moveSelf = 0
@@ -124,57 +137,137 @@ export function useDnD() {
 
         // Moving up / left
         if (targetIdx < draggedItem.value!.index) {
-          const [idxStart, idxEnd] = [isBefore ? targetIdx : targetIdx + 1, draggedItem.value!.index]
-
-          items.value.forEach((item, idx) => {
-            const isPreceedingItem = idx >= idxStart && idx < idxEnd
-            const el = listElDom.querySelector(`[data-id="${item.id}"]`) as HTMLElement
-
-            if (isPreceedingItem && el) {
-              if (direction === 'vertical') {
-                el.style.setProperty('--translate3D', `0, ${sourceH + gap}px, 0`)
-              } else {
-                el.style.setProperty('--translate3D', `${sourceW + gap}px, 0, 0`)
+          // Moving in the same container
+          if (dragMeta.value.sourceContainerEl === dragMeta.value.targetContainerEl) {
+            const [idxStart, idxEnd] = [isBefore ? targetIdx : targetIdx + 1, draggedItem.value!.index]
+  
+            items.value.forEach((item, idx) => {
+              const isPreceedingItem = idx >= idxStart && idx < idxEnd
+              const el = listElDom.querySelector(`[data-id="${item.id}"]`) as HTMLElement
+  
+              if (isPreceedingItem && el) {
+                if (direction === 'vertical') {
+                  el.style.setProperty('--translate3D', `0, ${sourceH + gap}px, 0`)
+                } else {
+                  el.style.setProperty('--translate3D', `${sourceW + gap}px, 0, 0`)
+                }
+  
+                const computedStyle = getComputedStyle(el)
+                const elSize = direction === 'vertical'
+                  ? +computedStyle.getPropertyValue('--itemHeight')
+                  : +computedStyle.getPropertyValue('--itemWidth')
+  
+                moveSelf -= (elSize + gap)
+              } else if (el) {
+                el.style.setProperty('--translate3D', '0, 0, 0')
               }
+            })
+          }
 
-              const computedStyle = getComputedStyle(el)
-              const elSize = direction === 'vertical'
-                ? +computedStyle.getPropertyValue('--itemHeight')
-                : +computedStyle.getPropertyValue('--itemWidth')
+          // Moving across multiple containers
+          else {
+            const _targetIdx = isBefore ? targetIdx - 1 : targetIdx
 
-              moveSelf -= (elSize + gap)
-            } else if (el) {
-              el.style.setProperty('--translate3D', '0, 0, 0')
-            }
-          })
+            let sourceItemEls = Array.from(
+              dragMeta.value.sourceContainerEl?.querySelectorAll('.dnd-item') ?? []
+            ) as HTMLElement[]
+
+            sourceItemEls.forEach((el, idx) => {
+              const isSuccessiveItem = idx > draggedItem.value!.index
+
+              if (isSuccessiveItem) {
+                if (direction === 'vertical') {
+                  el.style.setProperty('--translate3D', `0, -${sourceH + gap}px, 0`)
+                }
+              } else {
+                el.style.setProperty('--translate3D', '0, 0, 0')
+              }
+            })
+
+            let targetItemEls = Array.from(
+              dragMeta.value.targetContainerEl?.querySelectorAll('.dnd-item') ?? []
+            ) as HTMLElement[]
+
+            targetItemEls.forEach((el, idx) => {
+              const isSuccessiveItem = idx > _targetIdx
+
+              if (isSuccessiveItem) {
+                if (direction === 'vertical') {
+                  el.style.setProperty('--translate3D', `0, ${sourceH + gap}px, 0`)
+                }
+              } else {
+                el.style.setProperty('--translate3D', '0, 0, 0')
+              }
+            })
+          }
+
         }
 
         // Moving down / right
         else {
-          // console.log('Moving right')
-          const [idxStart, idxEnd] = [draggedItem.value!.index + 1, isBefore ? targetIdx : targetIdx + 1]
+          // Moving in the same container
+          if (dragMeta.value.sourceContainerEl === dragMeta.value.targetContainerEl) {
+            const [idxStart, idxEnd] = [draggedItem.value!.index + 1, isBefore ? targetIdx : targetIdx + 1]
 
-          items.value.forEach((item, idx) => {
-            const isFollowingItem = idx >= idxStart && idx < idxEnd
-            const el = listElDom.querySelector(`[data-id="${item.id}"]`) as HTMLElement
+            items.value.forEach((item, idx) => {
+              const isSuccessiveItem = idx >= idxStart && idx < idxEnd
+              const el = listElDom.querySelector(`[data-id="${item.id}"]`) as HTMLElement
 
-            if (isFollowingItem && el) {
-              if (direction === 'vertical') {
-                el.style.setProperty('--translate3D', `0, -${sourceH + gap}px, 0`)
-              } else {
-                el.style.setProperty('--translate3D', `-${sourceW + gap}px, 0, 0`)
+              if (isSuccessiveItem && el) {
+                if (direction === 'vertical') {
+                  el.style.setProperty('--translate3D', `0, -${sourceH + gap}px, 0`)
+                } else {
+                  el.style.setProperty('--translate3D', `-${sourceW + gap}px, 0, 0`)
+                }
+
+                const computedStyle = getComputedStyle(el)
+                const elSize = direction === 'vertical'
+                  ? +computedStyle.getPropertyValue('--itemHeight')
+                  : +computedStyle.getPropertyValue('--itemWidth')
+
+                moveSelf += (elSize + gap)
+              } else if (el) {
+                el.style.setProperty('--translate3D', '0, 0, 0')
               }
+            })
+          }
 
-              const computedStyle = getComputedStyle(el)
-              const elSize = direction === 'vertical'
-                ? +computedStyle.getPropertyValue('--itemHeight')
-                : +computedStyle.getPropertyValue('--itemWidth')
+          // Moving across multiple containers
+          else {
+            const _targetIdx = isBefore ? targetIdx - 1 : targetIdx
 
-              moveSelf += (elSize + gap)
-            } else if (el) {
-              el.style.setProperty('--translate3D', '0, 0, 0')
-            }
-          })
+            let sourceItemEls = Array.from(
+              dragMeta.value.sourceContainerEl?.querySelectorAll('.dnd-item') ?? []
+            ) as HTMLElement[]
+
+            sourceItemEls.forEach((el, idx) => {
+              const isSuccessiveItem = idx > draggedItem.value!.index
+
+              if (isSuccessiveItem) {
+                if (direction === 'vertical') {
+                  el.style.setProperty('--translate3D', `0, -${sourceH + gap}px, 0`)
+                }
+              } else {
+                el.style.setProperty('--translate3D', '0, 0, 0')
+              }
+            })
+
+            let targetItemEls = Array.from(
+              dragMeta.value.targetContainerEl?.querySelectorAll('.dnd-item') ?? []
+            ) as HTMLElement[]
+
+            targetItemEls.forEach((el, idx) => {
+              const isSuccessiveItem = idx > _targetIdx
+
+              if (isSuccessiveItem) {
+                if (direction === 'vertical') {
+                  el.style.setProperty('--translate3D', `0, ${sourceH + gap}px, 0`)
+                }
+              } else {
+                el.style.setProperty('--translate3D', '0, 0, 0')
+              }
+            })
+          }
         }
 
         // Move the item itself
@@ -182,7 +275,18 @@ export function useDnD() {
 
         if (selfDom) {
           if (direction === 'vertical') {
-            selfDom.style.setProperty('--translate3D', `0, ${moveSelf}px, 0`)
+            let xDiffContainers = 0
+
+            if (!isSameContainer) {
+              const targetContainerStyle = getComputedStyle(dragMeta.value.targetContainerEl!)
+              const sourceContainerStyle = getComputedStyle(dragMeta.value.sourceContainerEl!)
+
+              xDiffContainers = Number.parseFloat(targetContainerStyle.getPropertyValue('--containerX'))
+                - Number.parseFloat(sourceContainerStyle.getPropertyValue('--containerX'))
+            }
+
+
+            selfDom.style.setProperty('--translate3D', `${xDiffContainers}px, ${moveSelf}px, 0`)
           } else {
             selfDom.style.setProperty('--translate3D', `${moveSelf}px, 0, 0`)
           }
@@ -233,16 +337,18 @@ export function useDnD() {
     //   sourceEl: undefined,
     // }
 
-    const listElDom = unrefElement(listEl as any) as HTMLElement
+    requestAnimationFrame(() => {
+      const listElDom = dragMeta.value.sourceContainerEl
 
-    if (listElDom) {
-      const items = listElDom.querySelectorAll('.dnd-item') as NodeListOf<HTMLElement>
+      if (listElDom) {
+        const items = listElDom.querySelectorAll('.dnd-item') as NodeListOf<HTMLElement>
 
-      items.forEach(item => {
-        item.style.transition = ''
-        item.style.setProperty('--translate3D', '0, 0, 0')
-      })
-    }
+        items.forEach(item => {
+          item.style.transition = ''
+          item.style.setProperty('--translate3D', '0, 0, 0')
+        })
+      }
+    })
   }
 
   function createClone(el: HTMLElement) {
@@ -294,36 +400,41 @@ export function useDnD() {
         // const listElDom = unrefElement(listEl as any) as HTMLElement
         // dragMeta.value.isVirtualScroll = !!listElDom?.classList.contains('is-virtual')
         const clone = createClone(el)
-        clone.classList.add('opacity-50')
 
         return [clone]
       },
       frozenStyles: () => ['left', 'top'],
       onStart: drag => {
+        lastX = drag.startEvent.x
         lastY = drag.startEvent.y
         // const item = listItems.value.find(item => item.id === itemId) as IListItem
         containerEl.addEventListener('scroll', handleScroll)
-        containerEl.classList.add('hide-scrollbar')
+        // containerEl.classList.add('hide-scrollbar')
 
         handleDragStart({ item, el })
       },
-      onMove: drag => handleDragMove(drag.moveEvent as PointerSensorMoveEvent, drag.moveEvent.y - lastY),
+      onMove: drag => handleDragMove(
+        drag.moveEvent as PointerSensorMoveEvent,
+        direction === 'vertical'
+          ? drag.moveEvent.y - lastY
+          : drag.moveEvent.x - lastX
+      ),
       onEnd: drag => {
         containerEl.removeEventListener('scroll', handleScroll)
-        containerEl.classList.remove('hide-scrollbar')
+        // containerEl.classList.remove('hide-scrollbar')
 
         handleDragEnd(drag)
       },
     }).use(autoScrollPlugin({
       speed: (_, { distance, threshold }) => {
-        const x = Math.min(threshold, threshold - distance) / threshold
+        const spd = Math.min(threshold, threshold - distance) / threshold
 
-        return x * 450
+        return spd * 450
       },
       targets: [
         {
           element: containerEl,
-          axis: 'x',
+          axis: 'y',
           padding: { left: Infinity, right: Infinity },
           threshold: 50,
         },

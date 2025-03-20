@@ -1,5 +1,10 @@
 export type IDragMeta = {
    /**
+    * The container from which the item is being dragged
+    */
+   sourceContainerEl?: HTMLElement
+
+   /**
    * Source item element (to get the actual source item, you can use the `draggedItem` from store)
    */
    sourceEl?: HTMLElement
@@ -18,4 +23,9 @@ export type IDragMeta = {
     * The target item
     */
    target?: IItem
+
+   /**
+    * The container to which the element is being dragged to
+    */
+   targetContainerEl?: HTMLElement
 }
