@@ -4,19 +4,26 @@ export default defineNuxtConfig({
     ['github:gentlsro/UI#zod_upgrade'],
   ],
 
-  // Imports https://nuxt.com/docs/api/configuration/nuxt-config#imports
-  imports: {},
-
   modules: [
     '@nuxtjs/i18n',
     '@nuxt/eslint',
   ],
+
+  // Imports https://nuxt.com/docs/api/configuration/nuxt-config#imports
+  imports: {},
 
   srcDir: 'client/',
 
   // Future
   future: {
     compatibilityVersion: 4,
+  },
+
+  eslint: {
+    config: {
+      standalone: false,
+      stylistic: true,
+    },
   },
 
   // i18n
@@ -46,13 +53,6 @@ export default defineNuxtConfig({
         icon: 'i-emojione:flag-for-czechia',
       },
     ],
-  },
-
-  eslint: {
-    config: {
-      standalone: false,
-      stylistic: true,
-    },
   },
 
   unocss: {
