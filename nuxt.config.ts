@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   extends: [
-    ['github:gentlsro/UI#master'],
+    ['github:gentlsro/UI#zod_upgrade'],
   ],
 
   // Imports https://nuxt.com/docs/api/configuration/nuxt-config#imports
