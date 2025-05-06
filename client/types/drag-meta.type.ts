@@ -28,4 +28,12 @@ export type IDragMeta = {
     * The container to which the element is being dragged to
     */
    targetContainerEl?: HTMLElement
+
+   /**
+    * The latest position when dragging the item
+    */
+   latestPosition?: {
+      container: HTMLElement
+      index: number
+   }
 }

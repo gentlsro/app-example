@@ -1,0 +1,1 @@
+export const KANBAN_POSITION_GAP = 1000
