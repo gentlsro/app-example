@@ -4,4 +4,3 @@
 <template>
   <NuxtPage />
 </template>
-z
