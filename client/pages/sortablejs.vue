@@ -4,6 +4,7 @@ import type { SortableOptions } from 'sortablejs'
 import Sortable from 'sortablejs'
 import { KANBAN_POSITION_GAP } from '~/constants/kanban-position-gap.constant'
 import type { IDragEventPayload } from '~/types/kanban-emits.type'
+import type { IKanbanProps } from '~/types/kanban-props.type'
 
 const columns = ref(
   Array.from({ length: 5 }, (_, idx) => ({
@@ -38,9 +39,9 @@ const sortableOptions: SortableOptions = {
   ghostClass: 'ghost',
   dragClass: 'drag',
   onEnd: async () => {
-    promiseState = Promise.withResolvers()
+    // promiseState = Promise.withResolvers()
 
-    return promiseState.promise
+    // return promiseState.promise
   },
 }
 
@@ -96,6 +97,15 @@ function selectItem() {
   const el2 = document.querySelector('.kanban__column .dnd-item[data-id="4"]')
   Sortable.utils.select(el2 as HTMLElement)
 }
+
+const mapKeyFnc: IKanbanProps['mapKeyOrFnc'] = {
+  resolver: (item, columns) => {
+    console.log(item, columns)
+
+    return item.columnId
+  },
+  columnKey: 'columnId',
+}
 </script>
 
 <template>
@@ -132,6 +142,7 @@ function selectItem() {
       v-model:items="items"
       :disabled-column-ids
       :selection-config="{ enabled: true }"
+      :map-key-or-fnc="mapKeyFnc"
       h="150"
       :column-configuration="{
         sortableOptions,
@@ -205,7 +216,7 @@ function selectItem() {
 }
 
 :deep(.kanban-item) {
-  @apply bg-dark-950 p-x-2 p-y-1 first:p-t-2 cursor-default;
+  @apply bg-white dark:bg-dark-950 p-x-2 p-y-1 first:p-t-2 cursor-default;
 }
 
 :deep(.kanban__column-content) {

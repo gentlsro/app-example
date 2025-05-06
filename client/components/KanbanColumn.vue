@@ -124,9 +124,12 @@ function handleMoveItem(payload: { toIdx?: number, item: IItem }) {
     }
 
     const columnId = get(column.value, columnKey.value)
-    const itemColumnIdKey = typeof mapKeyOrFnc.value === 'function'
-      ? mapKeyOrFnc.value(item, columns.value)
-      : mapKeyOrFnc.value
+
+    const itemColumnIdKey = typeof mapKeyOrFnc.value === 'string'
+      ? mapKeyOrFnc.value
+      : mapKeyOrFnc.value?.columnKey ?? 'columnId'
+
+    console.log(itemColumnIdKey)
 
     item.position = newPosition
     item[itemColumnIdKey] = columnId

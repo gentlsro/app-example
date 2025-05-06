@@ -34,9 +34,13 @@ function handlePointerUp(ev: PointerEvent) {
 .dnd-item {
   @apply relative;
 
+  &.is-intermediate {
+    @apply rounded-custom outline outline-2 outline-dashed outline-red-200 outline-offset--2;
+  }
+
   &--selected {
     > * {
-      @apply outline outline-2 outline-blue-500;
+      @apply outline outline-2 outline-dashed outline-blue-500/65;
     }
   }
 }

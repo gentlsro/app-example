@@ -30,11 +30,16 @@ export type IKanbanProps = {
    * Then `mapKeyOrFnc` should be `columnId`
    *
    *
-   * Or it can be a function that returns the `columnId` (the key can be configured via `columnKey`)
+   * Or it can be a function that returns the actual `columnId` (the key can be configured via `columnKey`)
+   * So for the case above, the function should return { resolver: () => 2, columnKey: 'id' }
    *
    * @default 'columnId'
    */
-  mapKeyOrFnc?: string | ((item: IItem, columns: IItem) => string)
+  mapKeyOrFnc?: string
+    | {
+      resolver: ((item: IItem, columns: IItem[]) => string | number)
+      columnKey?: string
+    }
 
   /**
    * Columns for the Kanban
@@ -88,6 +93,11 @@ export type IKanbanProps = {
    * Selection configuration
    */
   selectionConfig?: {
+    /**
+     * Whether the selection is enabled
+     */
+    enabled?: boolean
+
     /**
      * Function that gets called on row select, returrn `false` to prevent the
      * selection from happening

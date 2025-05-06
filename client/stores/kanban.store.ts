@@ -113,11 +113,9 @@ export function useKanbanStore(payload?: { kanbanId?: string, kanbanProps?: IKan
 
     const itemsByColumnId = computed<Record<string, IItem[]>>(() => {
       return items.value.reduce((agg, item) => {
-        const itemColumnIdKey = typeof mapKeyOrFnc.value === 'function'
-          ? mapKeyOrFnc.value(item, columns.value)
-          : mapKeyOrFnc.value
-
-        const itemColumnId = item[itemColumnIdKey]
+        const itemColumnId = typeof mapKeyOrFnc.value === 'string'
+          ? get(item, mapKeyOrFnc.value)
+          : mapKeyOrFnc.value.resolver(item, columns.value)
 
         if (agg[itemColumnId] === undefined) {
           agg[itemColumnId] = []

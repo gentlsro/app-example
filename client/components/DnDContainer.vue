@@ -139,8 +139,13 @@ async function onEnd(ev: SortableEvent) {
   const to = ev.to
   const toIdx = ev.newIndex
 
+  // We temporarily set a state before we actually perform/commit the move
+  if (props.sortableOptions.onEnd) {
+    ev.item?.classList.add('is-intermediate')
+  }
+
+
   const res = await props.sortableOptions.onEnd?.(ev)
-  console.log('Log ~ onEnd ~ res:', res)
 
   if (res === false) {
     // @ts-expect-error DOM function
@@ -148,8 +153,12 @@ async function onEnd(ev: SortableEvent) {
     // @ts-expect-error DOM function
     to?.revert?.()
 
+    ev.item?.classList.remove('is-intermediate')
+
     return
   }
+
+  ev.item?.classList.remove('is-intermediate')
 
   if (from === to && fromIdx === toIdx) {
     refresh()
@@ -157,6 +166,8 @@ async function onEnd(ev: SortableEvent) {
 
     return
   }
+
+  
 
   // Moved within the same list
   if (from === to) {

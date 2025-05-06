@@ -17,6 +17,7 @@ const {
   itemsByColumnId,
   selectionByKey,
   columnsConfig,
+  selectionConfig,
 } = storeToRefs(kanbanStore)
 
 // Layout
@@ -61,13 +62,17 @@ function handleSelection(value: boolean) {
 </script>
 
 <template>
-  <div class="kanban-column__header">
+  <div
+    class="kanban-column__header"
+    :class="{ 'gap-2': !selectionConfig?.enabled }"
+  >
     <!-- Reorder -->
     <div class="i-akar-icons:drag-vertical handle" />
 
     <!-- Selection -->
     <slot name="selection">
       <Checkbox
+        v-if="selectionConfig?.enabled"
         :model-value="selectionState"
         @update:model-value="handleSelection"
       />
