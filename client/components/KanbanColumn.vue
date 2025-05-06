@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import type Sortable from 'sortablejs'
+
 // Types
-import type { IKanbanProps } from '~/types/kanban-props.type';
+import type { IKanbanProps } from '../types/kanban-props.type'
+import type { IKanbanColumn } from '../types/kanban-column.type'
 
 // Store
-import { useKanbanStore } from '~/stores/kanban.store';
+import { useKanbanStore } from '~/stores/kanban.store'
 
 // Constants
-import { KANBAN_POSITION_GAP } from '~/constants/kanban-position-gap.constant';
-import { faker } from '@faker-js/faker';
+import { KANBAN_POSITION_GAP } from '~/constants/kanban-position-gap.constant'
 
 type IProps = Pick<IKanbanProps, 'columnConfiguration'> & {
   column: IItem
@@ -16,16 +18,18 @@ type IProps = Pick<IKanbanProps, 'columnConfiguration'> & {
 const props = defineProps<IProps>()
 
 // Store
+const kanbanStore = useKanbanStore()
 const {
   itemKey,
   draggedItem,
   columns,
   disabledColumnIds,
+  selectionByKey,
   columnKey,
   mapKeyOrFnc,
   itemsByColumnId,
   highestItemPosition,
-} = storeToRefs(useKanbanStore())
+} = storeToRefs(kanbanStore)
 
 // Layout
 const containerEl = useTemplateRef('containerEl')
@@ -46,21 +50,44 @@ const sortableOptions = computed(() => {
   return {
     ...props.columnConfiguration?.sortableOptions,
     group: 'kanban-rows',
+    // multiDrag: true,
+    // multiDragKey: 'ctrl',
+    // selectedClass: 'dnd-item--selected',
+    // onSelect: (ev: any) => {
+    //   const item = ev?.item.getItem?.()
 
-    // @ts-expect-error DOM function
+    //   if (item) {
+    //     kanbanStore.toggleItemSelection({
+    //       item,
+    //       el: ev?.item,
+    //       value: true,
+    //     })
+    //   }
+    // },
+    // onDeselect: (ev: any) => {
+    //   const item = ev?.item.getItem?.()
+    //   if (item) {
+    //     kanbanStore.toggleItemSelection({
+    //       item,
+    //       el: ev?.item,
+    //       value: false,
+    //     })
+    //   }
+    // },
+
     onStart: ev => {
+      // @ts-expect-error DOM function
       draggedItem.value = ev?.item.getItem?.()
 
       props.columnConfiguration?.sortableOptions?.onStart?.(ev)
     },
 
-    // @ts-expect-error DOM function
-    onEnd: ev => {
+    onEnd: async ev => {
       draggedItem.value = undefined
 
-      props.columnConfiguration?.sortableOptions?.onEnd?.(ev)
+      return props.columnConfiguration?.sortableOptions?.onEnd?.(ev)
     },
-  }
+  } as Sortable.SortableOptions
 })
 
 function handleMoveItem(payload: { toIdx?: number, item: IItem }) {
@@ -74,6 +101,7 @@ function handleMoveItem(payload: { toIdx?: number, item: IItem }) {
     if (!items.value.length) {
       newPosition = highestItemPosition.value + KANBAN_POSITION_GAP
     } else {
+      // @ts-expect-error complex type
       const _containerEl = unrefElement(containerEl) as HTMLElement
       const children = Array.from(_containerEl.children) as HTMLElement[]
 
@@ -95,12 +123,11 @@ function handleMoveItem(payload: { toIdx?: number, item: IItem }) {
       }
     }
 
-    
     const columnId = get(column.value, columnKey.value)
     const itemColumnIdKey = typeof mapKeyOrFnc.value === 'function'
       ? mapKeyOrFnc.value(item, columns.value)
       : mapKeyOrFnc.value
-    
+
     item.position = newPosition
     item[itemColumnIdKey] = columnId
   }
@@ -111,20 +138,28 @@ defineExpose({
     column: column.value,
     items: items.value,
     sortableInstance: containerEl.value?.getSortableInstance(),
-  })
+  }) as IKanbanColumn,
 })
 </script>
 
 <template>
   <div class="kanban__column">
-    <slot name="header" :column :items>
+    <slot
+      name="header"
+      :column
+      :items
+    >
       <KanbanColumnHeader
         :column
         :items
       />
     </slot>
 
-    <slot name="content" :column :items>
+    <slot
+      name="content"
+      :column
+      :items
+    >
       <DnDContainer
         ref="containerEl"
         :ui="columnConfiguration?.ui"
@@ -132,16 +167,19 @@ defineExpose({
         :items
         :item-key
         :disabled="isDisabled"
+        :item-selected="item => !!selectionByKey[get(item, itemKey)]"
         direction="vertical"
         class="kanban__column-content hide-scrollbar"
         @move:item="handleMoveItem"
       >
         <template #default="rowProps">
-          <slot name="item" v-bind="rowProps" />
+          <slot
+            name="item"
+            v-bind="rowProps"
+          />
         </template>
       </DnDContainer>
     </slot>
-
   </div>
 </template>
 

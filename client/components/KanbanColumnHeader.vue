@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { useKanbanStore } from '~/stores/kanban.store';
+// Store
+import Sortable from 'sortablejs'
+import { useKanbanStore } from '~/stores/kanban.store'
 
 type IProps = {
   column: IItem
@@ -11,10 +13,9 @@ defineProps<IProps>()
 // Store
 const kanbanStore = useKanbanStore()
 const {
-  itemKey, 
-  selection,
+  itemKey,
+  itemsByColumnId,
   selectionByKey,
-  selectionConfig,
   columnsConfig,
 } = storeToRefs(kanbanStore)
 
@@ -27,7 +28,11 @@ const itemKeys = computed(() => {
 })
 
 const selectionState = computed(() => {
-  if (!selection.value || isEmpty(selection.value)) {
+  const isSomeSelected = itemKeys.value.some(rowKey => {
+    return selectionByKey.value[rowKey]
+  })
+
+  if (!isSomeSelected) {
     return false
   }
 
@@ -43,6 +48,16 @@ const columnTitle = computed(() => {
     ? columnsConfig.value.getLabel(column.value)
     : get(column.value, columnsConfig.value?.labelKey ?? 'name')
 })
+
+function handleSelection(value: boolean) {
+  itemsByColumnId.value?.[column.value.id]?.forEach(item => {
+    kanbanStore.toggleItemSelection({
+      item,
+      useSortableSelect: true,
+      value,
+    })
+  })
+}
 </script>
 
 <template>
@@ -53,22 +68,23 @@ const columnTitle = computed(() => {
     <!-- Selection -->
     <slot name="selection">
       <Checkbox
-        v-if="selectionConfig?.enabled"
         :model-value="selectionState"
-        indeterminate
+        @update:model-value="handleSelection"
       />
     </slot>
 
     <!-- Title -->
-     <h6 grow truncate>
+    <h6
+      grow
+      truncate
+    >
       {{ columnTitle }}
       {{ column.id }}
-     </h6>
-
+    </h6>
 
     <!-- Actions -->
     <slot name="actions" />
-  </div>  
+  </div>
 </template>
 
 <style lang="scss" scoped>
@@ -76,7 +92,7 @@ const columnTitle = computed(() => {
   @apply flex items-center p-1;
 
   .handle {
-    @apply w-4 w-4 shrink-0 cursor-move;
+    @apply w-4 w-4 shrink-0 cursor-ew-resize;
   }
 }
 </style>

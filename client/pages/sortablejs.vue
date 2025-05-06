@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { faker } from '@faker-js/faker'
-import type { SortableOptions } from 'sortablejs';
-import { KANBAN_POSITION_GAP } from '~/constants/kanban-position-gap.constant';
-import type { IDragEventPayload } from '~/types/kanban-emits.type';
-
+import type { SortableOptions } from 'sortablejs'
+import Sortable from 'sortablejs'
+import { KANBAN_POSITION_GAP } from '~/constants/kanban-position-gap.constant'
+import type { IDragEventPayload } from '~/types/kanban-emits.type'
 
 const columns = ref(
   Array.from({ length: 5 }, (_, idx) => ({
@@ -17,7 +17,7 @@ const items = ref(
     id: idx,
     text: faker.lorem.sentence({ min: 1, max: 10 }),
     columnId: idx % 5,
-    position: (KANBAN_POSITION_GAP) * idx +KANBAN_POSITION_GAP
+    position: (KANBAN_POSITION_GAP) * idx + KANBAN_POSITION_GAP,
   })),
 )
 
@@ -28,12 +28,20 @@ const items2 = ref(
   })),
 )
 
+let promiseState = Promise.withResolvers()
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 const sortableOptions: SortableOptions = {
   animation: 150,
   group: 'group1',
   swapThreshold: 0.75,
   ghostClass: 'ghost',
   dragClass: 'drag',
+  onEnd: async () => {
+    promiseState = Promise.withResolvers()
+
+    return promiseState.promise
+  },
 }
 
 const trigger = ref(0)
@@ -41,7 +49,7 @@ const trigger = ref(0)
 function handleChangeItem() {
   const item = faker.helpers.arrayElement(items.value)
 
-  item.text = faker.lorem.sentence({ min: 1, max:10 })
+  item.text = faker.lorem.sentence({ min: 1, max: 10 })
 }
 
 function addItem() {
@@ -49,14 +57,14 @@ function addItem() {
     id: items.value.length,
     text: faker.lorem.sentence({ min: 1, max: 10 }),
     columnId: items.value.length % 3,
-    position: (KANBAN_POSITION_GAP) * items.value.length +KANBAN_POSITION_GAP,
+    position: (KANBAN_POSITION_GAP) * items.value.length + KANBAN_POSITION_GAP,
   })
 }
 
 function getValidColumns() {
   return new Promise(resolve => {
     setTimeout(() => {
-      resolve([1,2,3])
+      resolve([1, 2, 3])
     }, 5)
   })
 }
@@ -72,14 +80,51 @@ async function handleDragStart(payload: IDragEventPayload) {
 
 function handleDragEnd(payload: IDragEventPayload) {
   disabledColumnIds.value = []
+
+  // const { columns } = payload
+
+  // columns.forEach(col => {
+  //   col.sortableInstance?.revertLastMove()
+  // })
+
+  return 'kokos'
+}
+
+function selectItem() {
+  const el = document.querySelector('.kanban__column .dnd-item[data-id="3"]')
+  Sortable.utils.select(el as HTMLElement)
+  const el2 = document.querySelector('.kanban__column .dnd-item[data-id="4"]')
+  Sortable.utils.select(el2 as HTMLElement)
 }
 </script>
 
 <template>
   <PageWrapper :breadcrumbs="false">
-    <Btn label="trigger" @click="trigger++" />
-    <Btn label="change item" @click="handleChangeItem" />
-    <Btn label="add item" @click="addItem" />
+    <Btn
+      label="trigger"
+      @click="trigger++"
+    />
+    <Btn
+      label="change item"
+      @click="handleChangeItem"
+    />
+    <Btn
+      label="add item"
+      @click="addItem"
+    />
+    <Btn
+      label="select item"
+      @click="selectItem"
+    />
+
+    <Btn
+      label="Allow move"
+      @click="promiseState.resolve(true)"
+    />
+    <Btn
+      label="Deny move"
+      @click="promiseState.resolve(false)"
+    />
 
     <Kanban
       :key="trigger"
@@ -92,14 +137,17 @@ function handleDragEnd(payload: IDragEventPayload) {
         sortableOptions,
         ui: {
           containerClass: 'flex flex-col rounded-custom',
-          itemClass: 'p-t-2 p-x-2 cursor-default bg-purple last:p-b-2 last:rounded-b-custom',
-        }
+          itemClass: () => 'kanban-item',
+        },
       }"
       @drag:start="handleDragStart"
       @drag:end="handleDragEnd"
     >
       <template #item="{ item }">
-        <div flex="~ col gap-1" class="card border-2 border-black rounded-custom p-2 bg-white dark:bg-black">
+        <div
+          flex="~ col gap-1"
+          class="card border-2 border-black rounded-custom p-2 bg-white dark:bg-black"
+        >
           <span font="semibold rem-14">
             {{ item.text }}
           </span>
@@ -149,8 +197,26 @@ function handleDragEnd(payload: IDragEventPayload) {
 }
 
 :deep(.ghost) {
-  .card::after {
-    @apply absolute content-empty top-2 left-2 right-2 bottom-0 bg-primary rounded-custom;
+  .card {
+    &::after {
+      @apply absolute content-empty top-1 left-2 right-2 bottom-1 bg-primary rounded-custom;
+    }
+  }
+}
+
+:deep(.kanban-item) {
+  @apply bg-dark-950 p-x-2 p-y-1 first:p-t-2 cursor-default;
+}
+
+:deep(.kanban__column-content) {
+  .kanban-item:last-child {
+    @apply p-b-2 rounded-b-custom;
+  }
+
+  &:has(.drag) {
+    .kanban-item:nth-last-child(2) {
+      @apply p-b-2 rounded-b-custom;
+    }
   }
 }
 </style>

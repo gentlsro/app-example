@@ -1,12 +1,10 @@
-import type Sortable from "sortablejs"
+// Types
+import type { IKanbanColumn } from './kanban-column.type'
 
-type KanbanColumn = {
-  column: IItem
-  items: IItem[]
-  sortableInstance: Sortable
+export type IDragEventPayload = {
+  item?: IItem
+  columns: IKanbanColumn[]
 }
-
-export type IDragEventPayload = { item?: IItem, columns: KanbanColumn[] }
 
 export type IKanbanEmits = {
   (e: 'drag:start', payload: IDragEventPayload): void

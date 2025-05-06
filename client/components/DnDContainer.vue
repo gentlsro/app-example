@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { moveItem } from '$utils'
-import Sortable from 'sortablejs';
+import Sortable from 'sortablejs'
 import type { SortableEvent } from 'sortablejs'
 
 // Types
-import type { IDndContainerProps } from '~/types/dnd-container-props.type';
-import type { IDnDContainerEmits } from '~/types/dnd-container-emits.type';
+import type { IDndContainerProps } from '~/types/dnd-container-props.type'
+import type { IDnDContainerEmits } from '~/types/dnd-container-emits.type'
+import SortableRevertPlugin from '~/constants/sortable-plugins/revert-last'
 
 const props = withDefaults(defineProps<IDndContainerProps>(), {
   itemKey: 'id',
-  sortableOptions: () => ({})
+  sortableOptions: () => ({}),
 })
 
 const emits = defineEmits<IDnDContainerEmits>()
@@ -18,8 +19,8 @@ const emits = defineEmits<IDnDContainerEmits>()
 const hasJustBeenCalled = refAutoReset(false, 10)
 let lastX = 0
 let lastY = 0
-let lastHorizontalDirection: 'left' | 'right' | undefined = undefined
-let lastVerticalDirection: 'up' | 'down' | undefined = undefined
+let lastHorizontalDirection: 'left' | 'right' | undefined
+let lastVerticalDirection: 'up' | 'down' | undefined
 const { x, y } = useSharedMouse()
 
 // Layout
@@ -30,7 +31,6 @@ const isDisabled = defineModel('disabled', { default: false })
 const draggedItem = ref<IItem>()
 
 const { resume, pause } = useRafFn(scrollContainers, { immediate: false })
-
 
 const itemIdsStrings = computed(() => {
   return items.value.map(item => get(item, props.itemKey)).join(',')
@@ -53,20 +53,21 @@ function scrollContainers() {
   const THRESHOLD = 120
   const elements = document.elementsFromPoint(x.value, y.value)
   const containers = elements.filter(el => el.classList.contains('dnd-container'))
-  
+
   if (x.value > lastX) {
     lastHorizontalDirection = 'right'
   } else if (x.value < lastX) {
     lastHorizontalDirection = 'left'
   }
-  
-  const horizontalContainers = containers.filter(container => container.classList.contains('direction--horizontal'))
-  
+
+  const horizontalContainers = containers
+    .filter(container => container.classList.contains('direction--horizontal'))
+
   if (lastHorizontalDirection === 'right') {
     horizontalContainers.forEach(container => {
       const rect = container.getBoundingClientRect()
       const diff = (rect.x + rect.width) - x.value
-      
+
       if (diff <= THRESHOLD && diff >= 0) {
         const speed = (1 - (diff / THRESHOLD)) * 15
         container.scrollLeft = container.scrollLeft + speed
@@ -76,29 +77,30 @@ function scrollContainers() {
     horizontalContainers.forEach(container => {
       const rect = container.getBoundingClientRect()
       const diff = x.value - rect.x
-      
+
       if (diff <= THRESHOLD && diff >= 0) {
         const speed = (1 - (diff / THRESHOLD)) * 15
         container.scrollLeft = container.scrollLeft - speed
       }
     })
   }
-  
+
   // Track vertical direction
   if (y.value > lastY) {
     lastVerticalDirection = 'down'
   } else if (y.value < lastY) {
     lastVerticalDirection = 'up'
   }
-  
+
   // Handle vertical scrolling
-  const verticalContainers = containers.filter(container => container.classList.contains('direction--vertical'))
-  
+  const verticalContainers = containers
+    .filter(container => container.classList.contains('direction--vertical'))
+
   if (lastVerticalDirection === 'down') {
     verticalContainers.forEach(container => {
       const rect = container.getBoundingClientRect()
       const diff = (rect.y + rect.height) - y.value
-      
+
       if (diff <= THRESHOLD && diff >= 0) {
         const speed = (1 - (diff / THRESHOLD)) * 15
         container.scrollTop = container.scrollTop + speed
@@ -108,34 +110,46 @@ function scrollContainers() {
     verticalContainers.forEach(container => {
       const rect = container.getBoundingClientRect()
       const diff = y.value - rect.y
-      
+
       if (diff <= THRESHOLD && diff >= 0) {
         const speed = (1 - (diff / THRESHOLD)) * 15
         container.scrollTop = container.scrollTop - speed
       }
     })
   }
-  
+
   lastX = x.value
   lastY = y.value
 }
 
-function onEnd(ev: SortableEvent) {
+async function onEnd(ev: SortableEvent) {
   pause()
 
   // We are using the `CancelSortPlugin` which may modify the dragEnd event,
   // for that case, we make sure to ignore the first event
-  if (!hasJustBeenCalled.value) {
-    hasJustBeenCalled.value = true
+  // if (!hasJustBeenCalled.value) {
+  //   hasJustBeenCalled.value = true
 
-    return
-  }
+  //   return
+  // }
 
   const from = ev.from
   const fromIdx = ev.oldIndex
 
   const to = ev.to
   const toIdx = ev.newIndex
+
+  const res = await props.sortableOptions.onEnd?.(ev)
+  console.log('Log ~ onEnd ~ res:', res)
+
+  if (res === false) {
+    // @ts-expect-error DOM function
+    from?.revert?.()
+    // @ts-expect-error DOM function
+    to?.revert?.()
+
+    return
+  }
 
   if (from === to && fromIdx === toIdx) {
     refresh()
@@ -149,7 +163,7 @@ function onEnd(ev: SortableEvent) {
     // @ts-expect-error DOM function
     from.move({ fromIdx, toIdx, item: draggedItem.value })
   }
-  
+
   // Moved to different list
   else {
     // @ts-expect-error DOM function
@@ -157,8 +171,6 @@ function onEnd(ev: SortableEvent) {
     // @ts-expect-error DOM function
     to.move({ toIdx, item: draggedItem.value })
   }
-
-  props.sortableOptions.onEnd?.(ev)
 }
 
 function move(payload: {
@@ -172,7 +184,7 @@ function move(payload: {
   if (!isNil(fromIdx) && !isNil(toIdx)) {
     items.value = moveItem(items, fromIdx, toIdx)
   }
-  
+
   // If we added an item from a different list
   else if (!isNil(toIdx)) {
     items.value = items.value.toSpliced(toIdx, 0, item)
@@ -183,13 +195,17 @@ function move(payload: {
     items.value = items.value.toSpliced(fromIdx, 1)
   }
 
-
   requestAnimationFrame(() => {
     emits(
       'move:item',
-      { fromIdx, toIdx, item, items: items.value }
+      { fromIdx, toIdx, item, items: items.value },
     )
   })
+}
+
+function revert() {
+  // @ts-expect-error Plugin function
+  sortable.value?.revertLastMove?.()
 }
 
 function refresh() {
@@ -197,7 +213,7 @@ function refresh() {
   sortable.value?.sort(itemIds)
 
   requestAnimationFrame(() => {
-    // @ts-expect-error Custom method on el.value
+    // @ts-expect-error Sortable method on the DOM element
     el.value?.update?.()
   })
 }
@@ -210,13 +226,12 @@ watch(itemIdsStrings, () => {
 // Sync `disable` with Sortable
 watch(isDisabled, isDisabled => sortable.value?.option('disabled', isDisabled))
 
-
 onMounted(() => {
   const _el = unrefElement(el.value) as HTMLElement
-  
+
   sortable.value = new Sortable(_el, {
     scroll: false,
-    revertOnSpill: true,
+    revertOnSpill: false,
     delay: 75,
     delayOnTouchOnly: true,
     fallbackTolerance: 3,
@@ -226,26 +241,35 @@ onMounted(() => {
     onStart,
     onEnd,
   })
+
+  SortableRevertPlugin.attachTo(sortable.value)
 })
 
-defineExpose({ refresh, getSortableInstance: () => sortable.value })
+defineExpose({
+  refresh,
+  revert,
+  getSortableInstance: () => sortable.value,
+})
 </script>
 
 <template>
   <div
     ref="el"
-    :class="['dnd-container', ui?.containerClass, { 'is-disabled': disabled }, `direction--${direction}`]"
+    class="dnd-container"
+    :class="[ui?.containerClass, { 'is-disabled': disabled }, `direction--${direction}`]"
     :style="ui?.containerStyle"
     .move="move"
     .refresh="refresh"
+    .revert="revert"
   >
     <DnDItem
       v-for="(item, index) in items"
       :key="get(item, itemKey)"
       :data-id="get(item, itemKey)"
       :item
-      :class="ui?.itemClass"
-      :style="ui?.itemStyle"
+      :selected="itemSelected?.(item)"
+      :class="ui?.itemClass?.({ item, index, items })"
+      :style="ui?.itemStyle?.({ item, index, items })"
     >
       <slot
         :item

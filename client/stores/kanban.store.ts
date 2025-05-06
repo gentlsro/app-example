@@ -1,10 +1,12 @@
-import type { ISelection } from "$ui"
+import type { DnDContainer } from '#components'
+import Sortable from 'sortablejs'
 
 // Types
-import type { IKanbanProps } from "~/types/kanban-props.type"
+import type { IKanbanProps } from '../types/kanban-props.type'
+import type { IKanbanSelection } from '../types/kanban-selection.type'
 
 // Constants
-import { KANBAN_POSITION_GAP } from "~/constants/kanban-position-gap.constant"
+import { KANBAN_POSITION_GAP } from '../constants/kanban-position-gap.constant'
 
 export const kanbanIdKey = Symbol('__kanbanId')
 
@@ -40,23 +42,75 @@ export function useKanbanStore(payload?: { kanbanId?: string, kanbanProps?: IKan
     const columnsConfig = ref<IKanbanProps['columnsConfig']>(kanbanProps?.columnsConfig)
 
     // Selection
-    const selection = ref<ISelection | undefined>(kanbanProps?.selection)
+    const selection = ref<IKanbanSelection[]>(kanbanProps?.selection ?? [])
 
     const selectionByKey = computed(() => {
-      const _selection = Array.isArray(selection.value)
-        ? selection.value
-        : [selection.value]
-
-      return _selection.reduce((agg, selection) => {
-        const key = selectionConfig.value?.selectionKey ?? itemKey.value
-        const _itemKey = getItemKey(selection, key)
-        agg[_itemKey] = true
+      return selection.value.reduce((agg, selection) => {
+        agg[selection.itemId] = true
 
         return agg
       }, {} as Record<string, boolean>)
     })
 
+    function toggleItemSelection(payload: {
+      item: IItem
+      el?: HTMLElement
+      value?: boolean
+
+      /**
+       * When true, the method will use the `Sortable.utils.(de)select` method
+       * to select/deselect the item in the Sortable instance
+       */
+      useSortableSelect?: boolean
+    }) {
+      const { item, el, value, useSortableSelect } = payload
+
+      const {
+        onSelect,
+      } = selectionConfig.value ?? {}
+
+      const _itemKey = itemKey.value
+      const itemId = getItemKey(item, _itemKey)
+
+      const selectionIdx = selection.value.findIndex(selectionItem => {
+        return itemId === selectionItem.itemId
+      })
+
+      // @ts-expect-error too complex type
+      const _kanbanEl = unrefElement(kanbanEl) as HTMLElement
+      const itemEl = el ?? _kanbanEl?.querySelector(`.kanban__column .dnd-item[data-id="${itemId}"]`) as HTMLElement
+
+      // Add item to selection
+      if (selectionIdx === -1 && value) {
+        const isSelectable = onSelect?.({ item, selection })
+
+        if (isSelectable === false && itemEl) {
+          Sortable.utils.deselect(itemEl)
+        }
+
+        selection.value = [
+          ...selection.value,
+          { item, itemId, itemEl },
+        ]
+
+        if (useSortableSelect && itemEl) {
+          Sortable.utils.select(itemEl)
+        }
+      }
+
+      // Remove item from selection
+      else if (selectionIdx !== -1 && !value) {
+        selection.value = selection.value.filter((_, idx) => idx !== selectionIdx)
+
+        if (useSortableSelect && itemEl) {
+          Sortable.utils.deselect(itemEl)
+        }
+      }
+    }
+
     // Layout
+    const kanbanEl = ref<InstanceType<typeof DnDContainer>>()
+
     const itemsByColumnId = computed<Record<string, IItem[]>>(() => {
       return items.value.reduce((agg, item) => {
         const itemColumnIdKey = typeof mapKeyOrFnc.value === 'function'
@@ -76,6 +130,9 @@ export function useKanbanStore(payload?: { kanbanId?: string, kanbanProps?: IKan
     })
 
     return {
+      // Layout
+      kanbanEl,
+
       // Utils
       itemKey,
       columnKey,
@@ -99,7 +156,8 @@ export function useKanbanStore(payload?: { kanbanId?: string, kanbanProps?: IKan
 
       // Selection
       selection,
-      selectionByKey
+      selectionByKey,
+      toggleItemSelection,
     }
   })()
 }

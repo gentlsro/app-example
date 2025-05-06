@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'vue'
-import type { SortableOptions } from "sortablejs"
+import type { SortableEvent, SortableOptions } from 'sortablejs'
 
 export type IDndContainerProps = {
   /**
@@ -11,6 +11,11 @@ export type IDndContainerProps = {
    * Whether the container is disabled for interactions
    */
   disabled?: boolean
+
+  /**
+   * A function that returns whether the item is selected
+   */
+  itemSelected?: (item: IItem) => boolean
 
   /**
    * Items for the DnD
@@ -25,7 +30,9 @@ export type IDndContainerProps = {
   /**
    * Options to be passed to the `Sortable` instance
    */
-  sortableOptions?: SortableOptions
+  sortableOptions?: Omit<SortableOptions, 'onEnd'> & {
+    onEnd?: (ev: SortableEvent) => any | Promise<any>
+  }
 
   /**
    * Visual configuration
@@ -44,11 +51,19 @@ export type IDndContainerProps = {
     /**
      * Class to be applied to the items
      */
-    itemClass?: ClassType
+    itemClass?: (payload: {
+      item: IItem
+      index: number
+      items: IItem[]
+    }) => ClassType
 
     /**
      * Style to be applied to the items
      */
-    itemStyle?: CSSProperties
+    itemStyle?: (payload: {
+      item: IItem
+      index: number
+      items: IItem[]
+    }) => CSSProperties
   }
 }

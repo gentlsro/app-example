@@ -1,7 +1,6 @@
-import Sortable from 'sortablejs'
-
-import { CancelSortPlugin } from '~/functions/sortable-cancel';
+import Sortable, { MultiDrag } from 'sortablejs'
 
 export default defineNuxtPlugin(() => {
-  Sortable.mount(CancelSortPlugin())
+  Sortable.mount(new MultiDrag())
+  // Sortable.mount(SortableRevertPlugin)
 })

@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import Sortable from 'sortablejs';
+import type Sortable from 'sortablejs'
 
 // Types
-import type { IKanbanEmits } from '~/types/kanban-emits.type';
-import type { IKanbanProps } from '~/types/kanban-props.type';
+import type { IKanbanEmits } from '../types/kanban-emits.type'
+import type { IKanbanProps } from '../types/kanban-props.type'
 
 // Store
-import { kanbanIdKey, useKanbanStore } from '~/stores/kanban.store';
+import { kanbanIdKey, useKanbanStore } from '~/stores/kanban.store'
 
 // Components
-import type KanbanColumn from './KanbanColumn.vue';
+import type KanbanColumn from './KanbanColumn.vue'
 
-const props = withDefaults( defineProps<IKanbanProps>(), {
+const props = withDefaults(defineProps<IKanbanProps>(), {
   itemKey: 'id',
   columnKey: 'id',
-  mapKeyOrFnc: 'columnId'
+  mapKeyOrFnc: 'columnId',
 })
 
 const emits = defineEmits<IKanbanEmits>()
@@ -25,6 +25,7 @@ provideLocal(kanbanIdKey, uuid)
 
 // Store
 const {
+  kanbanEl,
   itemKey,
   columnKey,
   items: storeItems,
@@ -59,14 +60,14 @@ syncRef(columns, storeColumns, { direction: 'both' })
 syncRef(toRef(props, 'itemKey'), itemKey, { direction: 'ltr' })
 syncRef(toRef(props, 'mapKeyOrFnc'), mapKeyOrFnc, { direction: 'ltr' })
 syncRef(toRef(props, 'columnKey'), columnKey, { direction: 'ltr' })
-syncRef(toRef(props, 'selection'), selectionStore, { direction: 'both' })
+syncRef(toRef(props, 'selection', []), selectionStore, { direction: 'both' })
 syncRef(toRef(props, 'selectionConfig'), selectionConfig, { direction: 'ltr' })
 syncRef(toRef(props, 'columnsConfig'), columnsConfig, { direction: 'ltr' })
 syncRef(toRef(props, 'disabledColumnIds', []), disabledColumnIds, { direction: 'ltr' })
 
 watch(draggedItem, item => {
   const columns = columnEls.value.map(col => col.getKanbanColumn())
-  
+
   if (item) {
     emits('drag:start', { item, columns })
   } else {
@@ -77,6 +78,7 @@ watch(draggedItem, item => {
 
 <template>
   <DnDContainer
+    ref="kanbanEl"
     :items="columns"
     class="kanban"
     direction="horizontal"
@@ -84,7 +86,7 @@ watch(draggedItem, item => {
     :item-key="columnKey"
     :ui="{
       containerClass: 'flex gap-2',
-      itemClass: 'min-w-50 max-w-50 rounded-custom'
+      itemClass: () => 'min-w-50 max-w-50 rounded-custom',
     }"
   >
     <template #default="{ item: column }">
@@ -98,9 +100,12 @@ watch(draggedItem, item => {
         </template>
 
         <template #item="rowProps">
-          <slot v-bind="rowProps" name="item" />
+          <slot
+            v-bind="rowProps"
+            name="item"
+          />
         </template>
       </KanbanColumn>
     </template>
-  </DnDContainer>  
+  </DnDContainer>
 </template>
