@@ -26,33 +26,19 @@ export default defineNuxtConfig({
     },
   },
 
+  fonts: {
+    defaults: {
+      weights: [400, 600, 700],
+      styles: ['normal', 'italic'],
+    },
+  },
+
   // i18n
   i18n: {
-    strategy: 'prefix_and_default',
-    skipSettingLocaleOnNavigate: true,
-    detectBrowserLanguage: {
-      useCookie: true,
-      cookieKey: 'lang',
-      cookieDomain: undefined,
+    compilation: {
+      strictMessage: false,
+      escapeHtml: false,
     },
-    langDir: '../i18n',
-    defaultLocale: 'en-US',
-    locales: [
-      {
-        code: 'en-US',
-        file: 'en-US.json',
-        dateFormat: 'MM/DD/YYYY',
-        currency: 'USD',
-        icon: 'i-emojione:flag-for-united-kingdom',
-      },
-      {
-        code: 'cs-CZ',
-        file: 'cs-CZ.json',
-        dateFormat: 'DD.MM.YYYY',
-        currency: 'CZK',
-        icon: 'i-emojione:flag-for-czechia',
-      },
-    ],
   },
 
   unocss: {
