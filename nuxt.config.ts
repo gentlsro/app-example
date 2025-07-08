@@ -43,14 +43,14 @@ export default defineNuxtConfig({
     locales: [
       {
         code: 'en-US',
-        file: `en-US.json`,
+        file: 'en-US.json',
         dateFormat: 'MM/DD/YYYY',
         currency: 'USD',
         icon: 'i-emojione:flag-for-united-kingdom',
       },
       {
         code: 'cs-CZ',
-        file: `cs-CZ.json`,
+        file: 'cs-CZ.json',
         dateFormat: 'DD.MM.YYYY',
         currency: 'CZK',
         icon: 'i-emojione:flag-for-czechia',
